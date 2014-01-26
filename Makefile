@@ -12,32 +12,10 @@ default: all
 # Do not specify CFLAGS or LIBS on the make invocation line - specify
 # XCFLAGS or XLIBS instead. Make ignores any lines in the makefile that
 # set a variable that was set on the command line.
-CFLAGS += $(XCFLAGS) -Iinclude -Iscripts -I$(GEN)
+CFLAGS += $(XCFLAGS) -Iinclude -Iscripts -I$(GEN) -I/usr/include/freetype2 -I/usr/local/include/openjpeg-2.0 -fpic
 LIBS += $(XLIBS) -lm
 
 include Makerules
-include Makethird
-
-THIRD_LIBS += $(FREETYPE_LIB)
-THIRD_LIBS += $(JBIG2DEC_LIB)
-THIRD_LIBS += $(JPEG_LIB)
-THIRD_LIBS += $(OPENJPEG_LIB)
-THIRD_LIBS += $(OPENSSL_LIB)
-THIRD_LIBS += $(ZLIB_LIB)
-
-LIBS += $(FREETYPE_LIBS)
-LIBS += $(JBIG2DEC_LIBS)
-LIBS += $(JPEG_LIBS)
-LIBS += $(OPENJPEG_LIBS)
-LIBS += $(OPENSSL_LIBS)
-LIBS += $(ZLIB_LIBS)
-
-CFLAGS += $(FREETYPE_CFLAGS)
-CFLAGS += $(JBIG2DEC_CFLAGS)
-CFLAGS += $(JPEG_CFLAGS)
-CFLAGS += $(OPENJPEG_CFLAGS)
-CFLAGS += $(OPENSSL_CFLAGS)
-CFLAGS += $(ZLIB_CFLAGS)
 
 # --- Commands ---
 
@@ -57,6 +35,7 @@ AR_CMD = $(QUIET_AR) $(AR) cr $@ $^
 LINK_CMD = $(QUIET_LINK) $(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 MKDIR_CMD = $(QUIET_MKDIR) mkdir -p $@
 RM_CMD = $(QUIET_RM) rm -f $@
+SO_CMD = $(CC) -shared -o $@ $^
 
 # --- File lists ---
 
@@ -106,31 +85,27 @@ $(PDF_JS_NONE_OBJ) :=  $(FITZ_HDR) $(PDF_HDR) $(PDF_SRC_HDR)
 
 # --- Library ---
 
-MUPDF_LIB := $(OUT)/libmupdf.a
-MUPDF_JS_NONE_LIB := $(OUT)/libmupdf-js-none.a
+MUPDF_LIB := $(OUT)/libmupdf.so
+MUPDF_JS_NONE_LIB := $(OUT)/libmupdf-js-none.so
 
 $(MUPDF_LIB) : $(FITZ_OBJ) $(PDF_OBJ) $(XPS_OBJ) $(CBZ_OBJ) $(IMG_OBJ)
 $(MUPDF_JS_NONE_LIB) : $(PDF_JS_NONE_OBJ)
 
-ifeq "$(V8_PRESENT)" "yes"
-MUPDF_JS_V8_LIB := $(OUT)/libmupdf-js-v8.a
-$(MUPDF_JS_V8_LIB) : $(PDF_JS_V8_OBJ)
-endif
-
-INSTALL_LIBS := $(MUPDF_LIB) $(MUPDF_JS_NONE_LIB) $(MUPDF_JS_V8_LIB)
+INSTALL_LIBS := $(MUPDF_LIB) $(MUPDF_JS_NONE_LIB) 
 
 # --- Rules ---
 
 $(ALL_DIR) $(OUT) $(GEN) :
 	$(MKDIR_CMD)
 
-$(OUT)/%.a :
-	$(RM_CMD)
-	$(AR_CMD)
-	$(RANLIB_CMD)
-
 $(OUT)/%: $(OUT)/%.o
 	$(LINK_CMD)
+
+$(OUT)/libmupdf.so :
+	$(SO_CMD) -lm -lz -lfreetype -ljbig2dec -lopenjp2 -ljpeg -lmupdf-js-none
+
+$(OUT)/libmupdf-js-none.so :
+	$(SO_CMD) 
 
 $(OUT)/%.o : source/%.c | $(ALL_DIR)
 	$(CC_CMD)
@@ -214,53 +189,12 @@ $(OUT)/pdf/pdf-pkcs7.o : $(ADOBECA_GEN)
 $(OUT)/pdf/js/pdf-js.o : $(JAVASCRIPT_GEN)
 $(OUT)/cmapdump.o : source/pdf/pdf-cmap.c source/pdf/pdf-cmap-parse.c
 
-# --- Tools and Apps ---
+# --- Update version string header ---
 
-MUDRAW := $(addprefix $(OUT)/, mudraw)
-$(MUDRAW) : $(MUPDF_LIB) $(MUPDF_JS_NONE_LIB) $(THIRD_LIBS)
-$(MUDRAW) : $(addprefix $(OUT)/tools/, mudraw.o)
-	$(LINK_CMD)
+VERSION = $(shell git describe --tags)
 
-MUTOOL := $(addprefix $(OUT)/, mutool)
-$(MUTOOL) : $(MUPDF_LIB) $(MUPDF_JS_NONE_LIB) $(THIRD_LIBS)
-$(MUTOOL) : $(addprefix $(OUT)/tools/, mutool.o pdfclean.o pdfextract.o pdfinfo.o pdfposter.o pdfshow.o)
-	$(LINK_CMD)
-
-ifeq "$(V8_PRESENT)" "yes"
-MUJSTEST_V8 := $(OUT)/mujstest-v8
-$(MUJSTEST_V8) : $(MUPDF_LIB) $(MUPDF_JS_V8_LIB) $(THIRD_LIBS)
-$(MUJSTEST_V8) : $(addprefix $(OUT)/platform/x11/, jstest_main.o pdfapp.o)
-	$(LINK_CMD) $(V8_LIBS)
-endif
-
-ifeq "$(NOX11)" ""
-MUVIEW_X11 := $(OUT)/mupdf-x11
-$(MUVIEW_X11) : $(MUPDF_LIB) $(MUPDF_JS_NONE_LIB) $(THIRD_LIBS)
-$(MUVIEW_X11) : $(addprefix $(OUT)/platform/x11/, x11_main.o x11_image.o pdfapp.o)
-	$(LINK_CMD) $(X11_LIBS)
-
-ifeq "$(NOCURL)" ""
-MUVIEW_X11_CURL := $(OUT)/mupdf-x11-curl
-$(MUVIEW_X11_CURL) : $(MUPDF_LIB) $(MUPDF_JS_NONE_LIB) $(THIRD_LIBS) $(CURL_LIB)
-$(MUVIEW_X11_CURL) : $(addprefix $(OUT)/platform/x11/curl/, x11_main.o x11_image.o pdfapp.o curl_stream.o)
-	$(LINK_CMD) $(X11_LIBS) $(CURL_LIBS)
-endif
-endif
-
-ifeq "$(V8_PRESENT)" "yes"
-ifeq "$(NOX11)" ""
-MUVIEW_X11_V8 := $(OUT)/mupdf-x11-v8
-$(MUVIEW_X11_V8) : $(MUPDF_LIB) $(MUPDF_JS_V8_LIB) $(THIRD_LIBS)
-$(MUVIEW_X11_V8) : $(addprefix $(OUT)/platform/x11/, x11_main.o x11_image.o pdfapp.o)
-	$(LINK_CMD) $(X11_LIBS) $(V8_LIBS)
-endif
-endif
-
-MUVIEW := $(MUVIEW_X11)
-MUVIEW_V8 := $(MUVIEW_X11_V8)
-MUVIEW_CURL := $(MUVIEW_X11_CURL)
-
-INSTALL_APPS := $(MUDRAW) $(MUTOOL) $(MUVIEW) $(MUJSTEST_V8) $(MUVIEW_V8) $(MUVIEW_CURL)
+version:
+	sed -i~ -e '/FZ_VERSION /s/".*"/"'$(VERSION)'"/' include/mupdf/fitz/version.h
 
 # --- Format man pages ---
 
@@ -281,11 +215,9 @@ incdir ?= $(prefix)/include
 mandir ?= $(prefix)/share/man
 docdir ?= $(prefix)/share/doc/mupdf
 
-third: $(THIRD_LIBS)
 libs: $(INSTALL_LIBS)
-apps: $(INSTALL_APPS)
 
-install: libs apps
+install: libs
 	install -d $(DESTDIR)$(incdir)/mupdf
 	install -d $(DESTDIR)$(incdir)/mupdf/fitz
 	install -d $(DESTDIR)$(incdir)/mupdf/pdf
@@ -295,9 +227,6 @@ install: libs apps
 
 	install -d $(DESTDIR)$(libdir)
 	install $(INSTALL_LIBS) $(DESTDIR)$(libdir)
-
-	install -d $(DESTDIR)$(bindir)
-	install $(INSTALL_APPS) $(DESTDIR)$(bindir)
 
 	install -d $(DESTDIR)$(mandir)/man1
 	install docs/man/*.1 $(DESTDIR)$(mandir)/man1
@@ -313,7 +242,7 @@ tarball:
 tags: $(shell find include source -name '*.[ch]')
 	ctags $^
 
-all: libs apps
+all: libs
 
 all-nojs:
 	$(MAKE) V8_PRESENT=no
