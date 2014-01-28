@@ -285,7 +285,7 @@ third: $(THIRD_LIBS)
 libs: $(INSTALL_LIBS)
 apps: $(INSTALL_APPS)
 
-install: libs apps
+install: libs apps third
 	install -d $(DESTDIR)$(incdir)/mupdf
 	install -d $(DESTDIR)$(incdir)/mupdf/fitz
 	install -d $(DESTDIR)$(incdir)/mupdf/pdf
@@ -304,6 +304,8 @@ install: libs apps
 
 	install -d $(DESTDIR)$(docdir)
 	install README COPYING CHANGES docs/*.txt $(DESTDIR)$(docdir)
+
+	install $(THIRD_LIBS) $(DESTDIR)$(libdir)
 
 tarball:
 	bash scripts/archive.sh
