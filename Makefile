@@ -105,7 +105,7 @@ $(OUT)/libmupdf-js-none.so :
 	$(SO_CMD) 
 
 $(OUT)/libmupdf.so :
-	$(SO_CMD) -lm -lz -lfreetype -ljbig2dec -lopenjp2 -ljpeg
+	$(SO_CMD) -L$(OUT) -lm -lz -lfreetype -ljbig2dec -lopenjp2 -ljpeg -lmupdf-js-none
 
 $(OUT)/%.o : source/%.c | $(ALL_DIR)
 	$(CC_CMD)
