@@ -85,13 +85,13 @@ $(PDF_JS_NONE_OBJ) :=  $(FITZ_HDR) $(PDF_HDR) $(PDF_SRC_HDR)
 
 # --- Library ---
 
-MUPDF_LIB := $(OUT)/libmupdf.so
 MUPDF_JS_NONE_LIB := $(OUT)/libmupdf-js-none.so
+MUPDF_LIB := $(OUT)/libmupdf.so
 
-$(MUPDF_LIB) : $(FITZ_OBJ) $(PDF_OBJ) $(XPS_OBJ) $(CBZ_OBJ) $(IMG_OBJ)
 $(MUPDF_JS_NONE_LIB) : $(PDF_JS_NONE_OBJ)
+$(MUPDF_LIB) : $(FITZ_OBJ) $(PDF_OBJ) $(XPS_OBJ) $(CBZ_OBJ) $(IMG_OBJ)
 
-INSTALL_LIBS := $(MUPDF_LIB) $(MUPDF_JS_NONE_LIB) 
+INSTALL_LIBS := $(MUPDF_JS_NONE_LIB) $(MUPDF_LIB)
 
 # --- Rules ---
 
@@ -101,11 +101,11 @@ $(ALL_DIR) $(OUT) $(GEN) :
 $(OUT)/%: $(OUT)/%.o
 	$(LINK_CMD)
 
-$(OUT)/libmupdf.so :
-	$(SO_CMD) -lm -lz -lfreetype -ljbig2dec -lopenjp2 -ljpeg -lmupdf-js-none
-
 $(OUT)/libmupdf-js-none.so :
 	$(SO_CMD) 
+
+$(OUT)/libmupdf.so :
+	$(SO_CMD) -lm -lz -lfreetype -ljbig2dec -lopenjp2 -ljpeg
 
 $(OUT)/%.o : source/%.c | $(ALL_DIR)
 	$(CC_CMD)
